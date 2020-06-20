@@ -61,8 +61,6 @@ int main() {
 	int l = total*8; 
 	mpfr_init2(kode, l);
 	mpfr_set_str(kode, code.c_str(), 10, rnd);
-	//mpfr_out_str(stderr, 10, 0, kode, rnd);
-
 	mpfr_t first, second;
 	
 	// loop until we output characters of length "total model frequency"
@@ -74,14 +72,6 @@ int main() {
 			mpfr_set_str(first, to_string(pair.second.first).c_str(), 10, rnd);
 			mpfr_set_str(second, to_string(pair.second.second).c_str(), 10, rnd);
 			
-			//cerr << total << "kode ";
-			//mpfr_out_str(stderr, 10, 0, kode, rnd);		
-			// cerr << " first ";
-			// mpfr_out_str(stderr, 10, 0, first, rnd);
-			// cerr << endl;
-			// cerr << "second ";
-			// mpfr_out_str(stderr, 10, 0, second, rnd);
-			// cerr << endl;
 			// low <= AC < high		
 			if (mpfr_greaterequal_p(kode, first) && mpfr_less_p(kode, second)) {
 				
@@ -98,10 +88,9 @@ int main() {
 
 				
 				// divide encoded number by range
+				//mpfr_div(kode, kode, temp, rnd);
 				mpfr_div(kode, kode, temp, rnd);
-				//mpfr_out_str(stderr, 10, 0, kode, rnd);
-
-				//cerr << endl;
+				//mpfr_set(kode, temp, rnd);
 				//mpfr_clear(temp);
 
 				break;

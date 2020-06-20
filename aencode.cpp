@@ -44,18 +44,19 @@ void print_out(int l) {
 	mpfr_set_str(final_high, string(high_buffer).substr(0, offset + 2).c_str(), 10, MPFR_RNDU);
 	
 	// "round-up" the low value if needed
-	if (low_buffer[offset + 4] != '0') {
+	if (low_buffer[offset + 3] != '0') {
 		mpfr_t r;
 		mpfr_init2(r, l);
 		string f;
 		f = string("1.0e-") + to_string(offset);
 		mpfr_set_str(r, f.c_str(), 10, MPFR_RNDU);
+		//mpfr_out_str(stderr, 10, 0, r, MPFR_RNDU);
 		mpfr_add(final_low, final_low, r, MPFR_RNDU);
 		mpfr_clear(r);
 	}
 
 	// "round-up" the high value if needed
-	if (high_buffer[offset + 4] != '0') {
+	if (high_buffer[offset + 3] != '0') {
 		mpfr_t r;
 		mpfr_init2(r, l);
 		string f;
