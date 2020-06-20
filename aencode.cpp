@@ -5,37 +5,44 @@
 #include <gmp.h>
 #include <mpfr.h>
 #include <cmath>
+
 using namespace std;
 
-// TODO: edge case - 0.0 
-void print_out(mpfr_t &low, mpfr_t &high, int l) {
+mpfr_t low, high;
 
-	char low_buffer[4096] = { 0 }; //new char[4096];
-	char high_buffer[4096] = { 0 }; // = new char[4096];
-	//cerr << l;
-	int pr = 4096; //ceil(l*2);
-	string fmt = "%." + to_string(pr) + "Rf";
+// Output the arithmetic coded low and high values, rounding them to the 
+// minimum precision needed to decode them 
+void print_out(int l) {
+
+	int buf_size = 4096;
+	char low_buffer[4096] = { 0 }; 
+	char high_buffer[4096] = { 0 };
+
+	string fmt = "%." + to_string(buf_size) + "Rf";
  	mpfr_sprintf(low_buffer, fmt.c_str(), low);
 	mpfr_sprintf(high_buffer, fmt.c_str(), high);
+
+	mpfr_clear(low);
+	mpfr_clear(high);
+
+	// find the offset (digit) where the high and low differs
 	int offset = 0;
-	for (int i = 2; i < 2048; i++) {
+	for (int i = 2; i < buf_size; i++) {
 		if (low_buffer[i] != high_buffer[i]) {
 			offset = i;
 			break;
 		}
 	}
-	//cerr << offset << endl;
-	//cout << offset << endl;
-	//low_buffer[offset + 1] = 0x00;
-	//high_buffer[offset + 1] = 0x00;
+	
+	// convert back to an mpfr_t
 	mpfr_t final_low, final_high;
 	mpfr_init2(final_low, l);
 	mpfr_init2(final_high, l);
 
 	mpfr_set_str(final_low, string(low_buffer).substr(0, offset + 2).c_str(), 10, MPFR_RNDU);
-
 	mpfr_set_str(final_high, string(high_buffer).substr(0, offset + 2).c_str(), 10, MPFR_RNDU);
 	
+	// "round-up" the low value if needed
 	if (low_buffer[offset + 4] != '0') {
 		mpfr_t r;
 		mpfr_init2(r, l);
@@ -45,6 +52,8 @@ void print_out(mpfr_t &low, mpfr_t &high, int l) {
 		mpfr_add(final_low, final_low, r, MPFR_RNDU);
 		mpfr_clear(r);
 	}
+
+	// "round-up" the high value if needed
 	if (high_buffer[offset + 4] != '0') {
 		mpfr_t r;
 		mpfr_init2(r, l);
@@ -54,33 +63,30 @@ void print_out(mpfr_t &low, mpfr_t &high, int l) {
 		mpfr_add(final_high, final_high, r, MPFR_RNDU);
 		mpfr_clear(r);
 	}
+
+	// convert back to ascii decimal again..
 	mpfr_sprintf(low_buffer, fmt.c_str(), final_low);
 	mpfr_sprintf(high_buffer, fmt.c_str(), final_high);
 	
 	mpfr_clear(final_low);
 	mpfr_clear(final_high);
 	mpfr_free_cache();
-	//mpfr_out_str(stdout, 10, 0, final_low, rnd);
-	//cout << endl;
-	//mpfr_out_str(stdout, 10, 0, final_high, rnd);
-	//cout << endl;
-	//printf("%s %s\n", low_buffer, high_buffer);
-	cout << string(low_buffer).substr(0, offset + 3) << " ";
-	cout << string(high_buffer).substr(0, offset + 3) << endl;
+
+	// and output to stdout, separated by a space
+	cout << string(low_buffer).substr(0, offset + 2) << " ";
+	cout << string(high_buffer).substr(0, offset + 2) << endl;
 
 }
 
-int main() {
+// encode the line of "visible ASCII" characters into an arithmetic coded
+// high and low value.  Return the precision (# bits) used to encode
+int encode(const string &line) {
 	map<char, int> counter;
 	map<char, double> probabilities;
 	map<char, pair<double, double>> ranges;
-	string line;
-	
-	getline(cin, line);
 	
 	// Get letter frequencies
 	for (int i = 0; i < line.length(); i++) {
-	//	cout << line[i] << endl;
 		counter[line[i]]++;
 	}
 
@@ -93,16 +99,14 @@ int main() {
 	// compute the letter low-high probability range
 	double total = 0.0;
 	for (auto pair: probabilities) {
-		//cout << pair.first << " " << pair.second <<  endl;
 		ranges[pair.first] = make_pair(total, total + pair.second);
 		total += pair.second;
 	}
 
 	// This mode specifies round-to-nearest
   	mpfr_rnd_t rnd = MPFR_RNDN;
-	mpfr_t low, high, delta;
+	mpfr_t delta;
 	
-	// 
 	int l = ceil(line.length() * 8);
 	mpfr_init2(low, l);
 	mpfr_init2(high, l);
@@ -119,28 +123,22 @@ int main() {
 		mpfr_init2(temp, l);
 		mpfr_set_str(temp, "0", 10, rnd);
 
-
 		auto rangePair = ranges[line[i]];
 		
 		//delta = high - low;
 		mpfr_sub(delta, high, low, rnd);
 		
+		//high = low +fmt rangePair.second*delta;
 		mpfr_set_str(second, to_string(rangePair.second).c_str(), 10, rnd);
-
-		//high = low + rangePair.second*delta;
 		mpfr_mul(high, delta, second, MPFR_RNDU);
 		mpfr_add(high, high, low, MPFR_RNDU);
 
 		//low = low + rangePair.first*delta;
 		mpfr_set_str(first, to_string(rangePair.first).c_str(), 10, rnd);
-
 		mpfr_mul(temp, delta, first, MPFR_RNDU);
 		mpfr_add(low, low, temp, MPFR_RNDU);
-		//mpfr_out_str(stderr, 10, 0, high, rnd);
-		//cerr << endl;
-		//mpfr_out_str(stderr, 10, 0, low, rnd);
-		//cerr << endl;
-			mpfr_clear(temp);
+	
+		mpfr_clear(temp);
 		mpfr_clear(first);
 		mpfr_clear(second);
 	}
@@ -149,61 +147,16 @@ int main() {
 
 	mpfr_free_cache();
 
-	print_out(low, high, l);
-	// char low_buffer[2048] = { 0 }; //new char[4096];
-	// char high_buffer[2048] = { 0 }; // = new char[4096];
-	// int pr = ceil(l*log10(2));
-	// string fmt = "%." + to_string(l) + "Rf";
- 
-	// mpfr_sprintf(low_buffer, fmt.c_str(), low);
-	// mpfr_sprintf(high_buffer, fmt.c_str(), high);
+	return l;
+}
 
-	// mpfr_clear(low);
-	// mpfr_clear(high);
-	// mpfr_free_cache();
-	
-	// int offset = 0;
-	// for (int i = 2; i < 2048; i++) {
-	// 	if (low_buffer[i] != high_buffer[i]) {
-	// 		offset = i;
-	// 		break;
-	// 	}
-	// }
-	// //cerr << offset << endl;
-	// //cout << offset << endl;
-	// //low_buffer[offset + 1] = 0x00;
-	// //high_buffer[offset + 1] = 0x00;
-	// mpfr_t final_low, final_high;
-	// mpfr_init2(final_low, l);
-	// mpfr_init2(final_high, l);
+int main() {
 
-	// mpfr_set_str(final_low, string(low_buffer).substr(0, offset + 2).c_str(), 10, MPFR_RNDU);
+	string line;
+	getline(cin, line);
+	
+	int precision = encode(line);
+	print_out(precision);
 
-	// mpfr_set_str(final_high, string(high_buffer).substr(0, offset + 2).c_str(), 10, MPFR_RNDU);
-	
-	// if (low_buffer[offset + 4] != '0') {
-	// 	mpfr_t r;
-	// 	mpfr_init2(r, l);
-	// 	string f;
-	// 	f = string("1.0e-") + to_string(offset);
-	// 	mpfr_set_str(r, f.c_str(), 10, MPFR_RNDU);
-	// 	mpfr_add(final_low, final_low, r, MPFR_RNDU);
-	// 	mpfr_clear(r);
-	// }
-	// mpfr_sprintf(low_buffer, fmt.c_str(), final_low);
-	// mpfr_sprintf(high_buffer, fmt.c_str(), final_high);
-	
-	// mpfr_clear(final_low);
-	// mpfr_clear(final_high);
-	// mpfr_free_cache();
-	// //mpfr_out_str(stdout, 10, 0, final_low, rnd);
-	// //cout << endl;
-	// //mpfr_out_str(stdout, 10, 0, final_high, rnd);
-	// //cout << endl;
-	// printf("%s %s\n", low_buffer, high_buffer);
-	//cout << string(low_buffer).substr(0, offset + 3) << " ";
-	//cout << string(high_buffer).substr(0, offset + 3) << endl;
-	
-	// what if the final number is zero?
 	return 0;
 }
