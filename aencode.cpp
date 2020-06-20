@@ -9,14 +9,15 @@
 using namespace std;
 
 mpfr_t low, high;
+char low_buffer[4096] = { 0 }; 
+char high_buffer[4096] = { 0 };
+
 
 // Output the arithmetic coded low and high values, rounding them to the 
 // minimum precision needed to decode them 
 void print_out(int l) {
 
 	int buf_size = 4096;
-	char low_buffer[4096] = { 0 }; 
-	char high_buffer[4096] = { 0 };
 
 	string fmt = "%." + to_string(buf_size) + "Rf";
  	mpfr_sprintf(low_buffer, fmt.c_str(), low);
@@ -73,8 +74,8 @@ void print_out(int l) {
 	mpfr_free_cache();
 
 	// and output to stdout, separated by a space
-	cout << string(low_buffer).substr(0, offset + 2) << " ";
-	cout << string(high_buffer).substr(0, offset + 2) << endl;
+	cout << string(low_buffer).substr(0, offset + 3) << " ";
+	cout << string(high_buffer).substr(0, offset + 3) << endl;
 
 }
 
